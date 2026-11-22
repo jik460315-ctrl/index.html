@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CLIPVEX AI - Smart Video Clipper</title>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+ background:#0b0913;color:#fff;
+ font-family:Arial,sans-serif;
+}
+header{
+ padding:19px;background:#151020;
+ border-bottom:1px solid #30233f;
+ display:flex;justify-content:space-between;
+ align-items:center;
+}
+.logo{font-size:24px;font-weight:900}
+.logo span{color:#ae7aff}
+.tag{font-size:11px;color:#c9aaff}
+.container{max-width:700px;margin:auto;padding:18px}
+.hero{text-align:center;padding:35px 5px}
+.hero h1{font-size:32px;line-height:1.35}
+.hero h1 span{color:#ad7aff}
+.hero p{color:#aaa;margin-top:12px;line-height:1.6}
+.card{
+ background:#171322;border:1px solid #332644;
+ border-radius:17px;padding:19px;margin-bottom:18px;
+}
+h2{font-size:19px;margin-bottom:12px}
+.muted{font-size:13px;color:#aaa;line-height:1.6}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tab{
+ padding:14px;background:#211831;color:#ddd;
+ border:1px solid #49345e;border-radius:10px;
+ font-weight:bold;
+}
+.tab.active{background:#8050ed;border-color:#ae7aff}
+.upload{
+ border:2px dashed #8054b7;border-radius:14px;
+ padding:27px 12px;text-align:center;background:#211831;
+}
+button{cursor:pointer}
+.primary{
+ width:100%;padding:14px;border:0;border-radius:10px;
+ background:linear-gradient(110deg,#8050ed,#b15bff);
+ color:white;font-weight:bold;font-size:15px;margin-top:14px;
+}
+input[type=file]{display:none}
+input[type=text]{
+ width:100%;padding:14px;background:#0e0b18;
+ color:white;border:1px solid #49375c;border-radius:9px;
+ outline:none;font-size:14px;
+}
+label{display:block;color:#cbbde0;font-size:13px;margin:15px 0 8px}
+select{
+ width:100%;background:#0e0b18;color:white;
+ padding:13px;border:1px solid #49375c;border-radius:9px;
+}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+video{width:100%;margin-top:15px;border-radius:10px;background:#000}
+iframe{width:100%;height:230px;border:0;border-radius:10px;margin-top:15px}
+.status{
+ background:#251a35;color:#d0b9ff;padding:13px;
+ border-radius:10px;margin-top:14px;
+ font-size:13px;line-height:1.6;
+}
+.clip{
+ background:#211a30;border:1px solid #49345e;
+ border-radius:12px;padding:14px;margin-top:12px;
+}
+.clip p{font-size:12px;color:#aaa;margin-top:8px}
+.clip button,.secondary{
+ background:#8050ed;border:0;color:white;
+ padding:10px 13px;border-radius:8px;margin-top:12px;
+}
+.clip input{accent-color:#a879ff;width:20px;height:20px}
+.actions{display:flex;gap:10px}
+.actions button{
+ flex:1;background:#302342;color:white;
+ border:1px solid #614583;padding:12px;border-radius:9px;
+}
+.counter{color:#c6a6ff;margin-top:12px;font-size:13px}
+.hidden{display:none}
+footer{text-align:center;padding:25px;color:#777;font-size:12px}
+a{color:#c6a6ff}
+</style>
+</head>
+
+<body>
+
+<header>
+ <div class="logo">CLIPVEX <span>AI</span></div>
+ <div class="tag">✦ SMART CLIPPER</div>
+</header>
+
+<main class="container">
+
+<section class="hero">
+ <h1>Turn Any Video Into <span>Shorts</span></h1>
+ <p>Upload a video or add a link to start your clipping workflow.</p>
+</section>
+
+<section class="card">
+ <h2>🎬 Choose Video Source</h2>
+
+ <div class="tabs">
+  <button class="tab active" id="uploadTab" onclick="showMode('upload')">📤 Upload Video</button>
+  <button class="tab" id="linkTab" onclick="showMode('link')">🔗 Paste Link</button>
+ </div>
+
+ <div id="uploadArea" style="margin-top:18px">
+  <div class="upload">
+   <div style="font-size:38px">🎥</div>
+   <p class="muted" style="margin:12px">Upload MP4, MOV or WebM</p>
+   <button class="primary" onclick="document.getElementById('file').click()">Choose Video</button>
+   <input type="file" id="file" accept="video/*">
+  </div>
+ </div>
+
+ <div id="linkArea" class="hidden" style="margin-top:18px">
+  <label>Paste Your Video Link</label>
+  <input type="text" id="videoLink" placeholder="https://www.youtube.com/watch?v=...">
+  <p class="muted" style="margin-top:10px">
+   Supports YouTube, MP4, Instagram, TikTok, Facebook and Google Drive URLs.
+  </p>
+  <button class="primary" onclick="loadLink()">Load Video Link →</button>
+ </div>
+
+ <p id="info" class="muted" style="margin-top:15px">No video selected.</p>
+
+ <video id="video" controls class="hidden"></video>
+ <iframe id="embed" class="hidden" allowfullscreen></iframe>
+
+ <div id="sourceStatus" class="status">
+  Choose a video source to begin.
+ </div>
+</section>
+
+<section class="card">
+ <h2>⚙️ Clip Settings</h2>
+
+ <div class="grid">
+  <div>
+   <label>Clip Duration</label>
+   <select id="duration">
+    <option value="30">30 Seconds</option>
+    <option value="45">45 Seconds</option>
+    <option value="60">60 Seconds</option>
+   </select>
+  </div>
+
+  <div>
+   <label>Number of Clips</label>
+   <select id="count">
+    <option value="3">3 Clips</option>
+    <option value="5">5 Clips</option>
+    <option value="10">10 Clips</option>
+   </select>
+  </div>
+ </div>
+
+ <label>Video Format</label>
+ <select id="format">
+  <option value="9:16">9:16 - Shorts / Reels</option>
+  <option value="16:9">16:9 - Landscape</option>
+  <option value="1:1">1:1 - Square</option>
+ </select>
+
+ <label>Caption Style</label>
+ <select id="caption">
+  <option>Bold Captions</option>
+  <option>Minimal Captions</option>
+  <option>Highlight Keywords</option>
+ </select>
+
+ <button class="primary" onclick="findMoments()">✨ Find Best Moments</button>
+
+ <div id="status" class="status">
+  Waiting for video...
+ </div>
+</section>
+
+<section class="card hidden" id="results">
+ <h2>🎯 Suggested Clips</h2>
+ <p class="muted">Review and select your clips.</p>
+
+ <div class="actions" style="margin-top:15px">
+  <button onclick="selectAll(true)">Select All</button>
+  <button onclick="selectAll(false)">Deselect All</button>
+ </div>
+
+ <p class="counter" id="counter">0 selected</p>
+ <div id="clipList"></div>
+
+ <button class="primary" onclick="exportNotice()">Download Selected Clips</button>
+</section>
+
+<section class="card">
+ <h2>🚀 CLIPVEX Features</h2>
+ <div class="grid">
+  <div class="clip">🎯<p>Smart Moment Detection</p></div>
+  <div class="clip">💬<p>Auto Captions</p></div>
+  <div class="clip">📱<p>Vertical Video Format</p></div>
+  <div class="clip">✂️<p>Automatic Clipping</p></div>
+ </div>
+ <p class="muted" style="margin-top:12px">
+  AI processing features require a connected backend.
+ </p>
+</section>
+
+</main>
+
+<footer>© 2026 CLIPVEX AI · Made for Creators</footer>
+
+<script>
+const fileInput=document.getElementById("file");
+const video=document.getElementById("video");
+const embed=document.getElementById("embed");
+
+let videoURL=null;
+let clips=[];
+let sourceReady=false;
+let sourceType="";
+
+function showMode(mode){
+ document.getElementById("uploadArea").classList.toggle("hidden",mode!=="upload");
+ document.getElementById("linkArea").classList.toggle("hidden",mode!=="link");
+
+ document.getElementById("uploadTab").classList.toggle("active",mode==="upload");
+ document.getElementById("linkTab").classList.toggle("active",mode==="link");
+}
+
+function clearPreview(){
+ video.pause();
+ video.removeAttribute("src");
+ video.load();
+ video.classList.add("hidden");
+
+ embed.src="about:blank";
+ embed.classList.add("hidden");
+
+ if(videoURL){
+  URL.revokeObjectURL(videoURL);
+  videoURL=null;
+ }
+ sourceReady=false;
+}
+
+function setStatus(message){
+ document.getElementById("sourceStatus").textContent=message;
+}
+
+fileInput.addEventListener("change",()=>{
+ const file=fileInput.files[0];
+ if(!file)return;
+
+ clearPreview();
+ sourceType="upload";
+
+ videoURL=URL.createObjectURL(file);
+ video.src=videoURL;
+ video.classList.remove("hidden");
+
+ document.getElementById("info").textContent=file.name;
+
+ setStatus("Loading video...");
+
+ video.onloadedmetadata=()=>{
+  sourceReady=true;
+  document.getElementById("info").textContent=
+  file.name+" · "+formatTime(video.duration);
+
+  setStatus("Video uploaded successfully! Ready for the next step.");
+ };
+});
+
+function formatTime(seconds){
+ if(!Number.isFinite(seconds))return "Unknown";
+ const m=Math.floor(seconds/60);
+ const s=Math.floor(seconds%60);
+ return m+":"+String(s).padStart(2,"0");
+}
+
+function getYouTubeId(url){
+ try{
+  const u=new URL(url);
+  if(u.hostname.includes("youtu.be"))
+   return u.pathname.split("/")[1];
+  if(u.hostname.includes("youtube.com")){
+   if(u.searchParams.get("v"))return u.searchParams.get("v");
+   const parts=u.pathname.split("/");
+   if(["shorts","embed","live"].includes(parts[1]))return parts[2];
+  }
+ }catch(e){}
+ return null;
+}
+
+function loadLink(){
+ const input=document.getElementById("videoLink").value.trim();
+
+ if(!input){
+  alert("Please paste a video link.");
+  return;
+ }
+
+ let url;
+ try{
+  url=new URL(input);
+  if(!["http:","https:"].includes(url.protocol))throw Error();
+ }catch(e){
+  alert("Please enter a valid HTTP or HTTPS link.");
+  return;
+ }
+
+ clearPreview();
+ document.getElementById("info").textContent=url.hostname;
+ document.getElementById("results").classList.add("hidden");
+
+ const host=url.hostname.toLowerCase();
+
+ // Direct video file
+ if(/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url.pathname+url.search)){
+  sourceType="direct";
+  video.src=url.href;
+  video.classList.remove("hidden");
+  setStatus("Loading direct video...");
+  video.onloadedmetadata=()=>{
+   sourceReady=true;
+   setStatus("Direct video loaded! Duration: "+formatTime(video.duration));
+  };
+  video.onerror=()=>{
+   sourceReady=false;
+   setStatus("Video could not load. The server may block external playback or require access.");
+  };
+  return;
+ }
+
+ // YouTube
+ const ytId=getYouTubeId(url.href);
+ if(ytId && /^[a-zA-Z0-9_-]{11}$/.test(ytId)){
+  sourceType="youtube";
+  embed.src="https://www.youtube-nocookie.com/embed/"+ytId;
+  embed.classList.remove("hidden");
+  setStatus("YouTube preview loaded if the video allows embedding. Processing requires authorized video access.");
+  document.getElementById("info").textContent="YouTube video";
+  return;
+ }
+
+ // Google Drive
+ if(host==="drive.google.com" || host==="www.drive.google.com"){
+  const match=url.pathname.match(/\/file\/d\/([^/]+)/);
+  const id=match?match[1]:url.searchParams.get("id");
+
+  if(id){
+   sourceType="drive";
+   embed.src="https://drive.google.com/file/d/"+encodeURIComponent(id)+"/preview";
+   embed.classList.remove("hidden");
+   setStatus("Google Drive preview requested. Make sure the file is shared with viewer access. Processing still requires authorized file access.");
+  }else{
+   setStatus("Use a Google Drive file sharing link.");
+  }
+  return;
+ }
+
+ // Social platform links
+ if(host.includes("instagram.com") ||
+    host.includes("facebook.com") ||
+    host.includes("fb.watch") ||
+    host.includes("tiktok.com")){
+
+  sourceType="social";
+  sourceReady=false;
+
+  let platform="Social media";
+  if(host.includes("instagram.com"))platform="Instagram";
+  if(host.includes("facebook.com") || host.includes("fb.watch"))platform="Facebook";
+  if(host.includes("tiktok.com"))platform="TikTok";
+
+  setStatus(platform+" link detected. Open the original post to view it. Automatic video import needs authorized platform access or an uploaded video file.");
+
+  const linkButton=document.createElement("button");
+  linkButton.className="secondary";
+  linkButton.textContent="Open Original Video";
+  linkButton.onclick=()=>window.open(url.href,"_blank","noopener");
+  document.getElementById("sourceStatus").appendChild(linkButton);
+  return;
+ }
+
+ sourceType="unknown";
+ setStatus("Link type not recognized. Try a direct MP4, YouTube or Google Drive file link.");
+}
+
+function findMoments(){
+ if(!sourceReady || !video.src || !Number.isFinite(video.duration)){
+  alert("For this prototype, upload a video or load a playable direct video file first. Other platform links need an authorized processing connection.");
+  return;
+ }
+
+ const duration=Number(document.getElementById("duration").value);
+ const count=Number(document.getElementById("count").value);
+
+ if(video.duration<duration){
+  alert("Video is shorter than the selected clip duration.");
+  return;
+ }
+
+ clips=[];
+ const list=document.getElementById("clipList");
+ list.innerHTML="";
+
+ const maxStart=video.duration-duration;
+
+ for(let i=0;i<count;i++){
+  const start=Math.floor((maxStart/(count+1))*(i+1));
+  clips.push({start,end:start+duration,selected:true});
+ }
+
+ clips.forEach((clip,i)=>{
+  const div=document.createElement("div");
+  div.className="clip";
+
+  const top=document.createElement("div");
+  top.style.display="flex";
+  top.style.justifyContent="space-between";
+
+  const title=document.createElement("strong");
+  title.textContent="Clip "+(i+1);
+
+  const check=document.createElement("input");
+  check.type="checkbox";
+  check.checked=true;
+
+  top.append(title,check);
+
+  const time=document.createElement("p");
+  time.textContent=formatTime(clip.start)+" - "+formatTime(clip.end);
+
+  const preview=document.createElement("button");
+  preview.textContent="▶ Preview Moment";
+  preview.onclick=()=>{
+   video.currentTime=clip.start;
+   video.play();
+  };
+
+  check.onchange=()=>{
+   clips[i].selected=check.checked;
+   updateCounter();
+  };
+
+  div.append(top,time,preview);
+  list.appendChild(div);
+ });
+
+ document.getElementById("results").classList.remove("hidden");
+ document.getElementById("status").textContent=
+ "Sample time segments created. AI has not detected these as best moments.";
+
+ updateCounter();
+}
+
+function selectAll(value){
+ clips.forEach(c=>c.selected=value);
+ document.querySelectorAll("#clipList input").forEach(c=>c.checked=value);
+ updateCounter();
+}
+
+function updateCounter(){
+ const total=clips.filter(c=>c.selected).length;
+ document.getElementById("counter").textContent=
+ total+" of "+clips.length+" clips selected";
+}
+
+function exportNotice(){
+ const total=clips.filter(c=>c.selected).length;
+
+ if(!total){
+  alert("Select at least one clip.");
+  return;
+ }
+
+ alert("Selected "+total+" clips. MP4 export will work after connecting the video processing backend.");
+}
+</script>
+
+</body> 
+<style>
+/* CLIPVEX AI PRICING */
+.pricing-section {
+  padding: 60px 18px;
+  background: #10091f;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.pricing-section .price-heading {
+  font-size: 30px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.pricing-section .price-subtitle {
+  color: #b9adc9;
+  font-size: 15px;
+  margin-bottom: 32px;
+}
+
+.pro-card {
+  max-width: 390px;
+  margin: auto;
+  padding: 28px 22px;
+  border-radius: 22px;
+  background: linear-gradient(160deg, #25133e, #150d27);
+  border: 1px solid #9b5cff;
+  box-shadow: 0 0 28px rgba(139, 70, 255, 0.15);
+  text-align: left;
+}
+
+.pro-badge {
+  display: inline-block;
+  background: #7c3aed;
+  color: white;
+  padding: 7px 14px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.pro-name {
+  font-size: 26px;
+  font-weight: 800;
+  margin-top: 20px;
+}
+
+.pro-price {
+  font-size: 42px;
+  font-weight: 900;
+  margin: 15px 0;
+}
+
+.pro-price span {
+  font-size: 15px;
+  color: #c4b5fd;
+  font-weight: normal;
+}
+
+.pro-description {
+  color: #c5b8d6;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.pro-divider {
+  border: 0;
+  border-top: 1px solid #45315f;
+  margin: 22px 0;
+}
+
+.pro-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pro-list li {
+  padding: 11px 0;
+  font-size: 14px;
+  color: #eee6ff;
+}
+
+.pro-list li::before {
+  content: "✓";
+  color: #b794ff;
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.pro-button {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  margin-top: 24px;
+  padding: 16px;
+  background: linear-gradient(90deg, #9333ea, #6d28d9);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+}
+
+.pro-note {
+  color: #a99abf;
+  text-align: center;
+  font-size: 12px;
+  margin-top: 15px;
+}
+
+</style>
+
+<section class="pricing-section" id="pricing">
+  <h2 class="price-heading">Unlock Your Creator Potential</h2>
+
+  <p class="price-subtitle">
+    Start free. Upgrade when you're ready to create more.
+  </p>
+
+  <div class="pro-card">
+    <span class="pro-badge">🔥 CREATOR PRO</span>
+
+    <h3 class="pro-name">CLIPVEX AI Pro</h3>
+
+    <div class="pro-price">
+      ₹199 <span>/ month</span>
+    </div>
+
+    <p class="pro-description">
+      Create viral-ready video clips with powerful AI tools
+      and take your content to the next level.
+    </p>
+
+    <hr class="pro-divider">
+
+    <ul class="pro-list">
+      <li>AI-powered video clipping</li>
+      <li>Hindi & English auto captions</li>
+      <li>Vertical 9:16 video export</li>
+      <li>Watermark-free downloads</li>
+      <li>Creator-ready short videos</li>
+      <li>Premium editing workflow</li>
+    </ul>
+
+    <button class="pro-button"
+      onclick="alert('CLIPVEX AI Pro payments are coming soon!')">
+      Upgrade to Pro — ₹199/month
+    </button>
+
+    <p class="pro-note">
+      Cancel anytime · Creator-friendly pricing
+    </p>
+  </div>
+</section>
+
+</html>
