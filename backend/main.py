@@ -183,11 +183,11 @@ Use timestamps in seconds.
     except HTTPException:
         raise
 
-    except requests.RequestException:
-        raise HTTPException(
-            status_code=502,
-            detail="Gemini API request failed"
-        )
+    except requests.RequestException as error:
+    raise HTTPException(
+        status_code=502,
+        detail=f"Gemini API error: {str(error)}"
+    )
 
     except Exception:
         raise HTTPException(
