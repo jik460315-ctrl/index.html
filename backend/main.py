@@ -35,7 +35,165 @@ def home():
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+@app.post("/analyze/{video_id}")
+def analyze_video(video_id: str):
+    api_key = os.getenv("GEMINI_API_KEY")
 
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Gemini API key is missing"
+        )
+
+    matches = list(UPLOAD_DIR.glob(video_id + ".*"))
+
+    if not matches:
+        raise HTTPException(
+            status_code=404,
+            detail="Video not found"
+        )
+
+    source = matches[0]
+
+    try:
+        # Upload video to Gemini
+        start_upload = requests.post(
+            "https://generativelanguage.googleapis.com/upload/v1beta/files",
+            params={"key": api_key},
+            headers={
+                "X-Goog-Upload-Protocol": "resumable",
+                "X-Goog-Upload-Command": "start",
+                "X-Goog-Upload-Header-Content-Length": str(source.stat().st_size),
+                "X-Goog-Upload-Header-Content-Type": "video/mp4",
+                "Content-Type": "application/json"
+            },
+            json={"file": {"display_name": source.name}},
+            timeout=60
+        )
+
+        start_upload.raise_for_status()
+        upload_url = start_upload.headers.get("X-Goog-Upload-URL")
+
+        if not upload_url:
+            raise HTTPException(
+                status_code=500,
+                detail="Gemini upload URL missing"
+            )
+
+        with open(source, "rb") as video_file:
+            uploaded = requests.post(
+                upload_url,
+                headers={
+                    "X-Goog-Upload-Offset": "0",
+                    "X-Goog-Upload-Command": "upload, finalize"
+                },
+                data=video_file,
+                timeout=600
+            )
+
+        uploaded.raise_for_status()
+        gemini_file = uploaded.json()["file"]
+
+        # Wait until Gemini finishes processing the video
+        file_name = gemini_file["name"]
+
+        for _ in range(30):
+            file_status = requests.get(
+                f"https://generativelanguage.googleapis.com/v1beta/{file_name}",
+                params={"key": api_key},
+                timeout=30
+            )
+
+            file_status.raise_for_status()
+            gemini_file = file_status.json()
+
+            if gemini_file.get("state") == "ACTIVE":
+                break
+
+            if gemini_file.get("state") == "FAILED":
+                raise HTTPException(
+                    status_code=500,
+                    detail="Gemini video processing failed"
+                )
+
+            import time
+            time.sleep(5)
+
+        if gemini_file.get("state") != "ACTIVE":
+            raise HTTPException(
+                status_code=504,
+                detail="Gemini video processing timed out"
+            )
+
+        # Ask AI to find engaging moments
+        prompt = """
+Analyze this video and find 5 potentially engaging short-form moments.
+
+Look for funny, emotional, surprising, exciting, useful, or attention-grabbing moments.
+Choose moments that make sense as standalone clips.
+Do not invent events.
+
+Return ONLY valid JSON in this format:
+{
+  "moments": [
+    {
+      "start": 12.5,
+      "end": 45.0,
+      "reason": "Why this moment is engaging",
+      "score": 85
+    }
+  ]
+}
+
+Choose moments approximately 20 to 60 seconds long.
+Use timestamps in seconds.
+"""
+
+        result = requests.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+            params={"key": api_key},
+            json={
+                "contents": [{
+                    "parts": [
+                        {"file_data": {
+                            "mime_type": gemini_file["mimeType"],
+                            "file_uri": gemini_file["uri"]
+                        }},
+                        {"text": prompt}
+                    ]
+                }],
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "responseMimeType": "application/json"
+                }
+            },
+            timeout=300
+        )
+
+        result.raise_for_status()
+        data = result.json()
+        ai_text = data["candidates"][0]["content"]["parts"][0]["text"]
+
+        return {
+            "video_id": video_id,
+            "moments": __import__("json").loads(ai_text),
+            "message": "AI analysis completed"
+        }
+
+    except HTTPException:
+        raise
+
+    except requests.RequestException:
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini API request failed"
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="AI analysis failed"
+        )
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
     allowed = {
